@@ -1,0 +1,18 @@
+$dtmDate = get-Date
+$gmtoffset = 5 # Set To Time To Start Task The 5 Means 5 Hours From Your Local Time
+$RunTime = $dtmDate.AddHours($gmtoffset)
+$vmName = 'VM_Name'
+$si = Get-View ServiceInstance
+$scheduledTaskManager = Get-View $si.Content.ScheduledTaskManager
+$vm = Get-View -ViewType VirtualMachine -Filter @{"Name"=$vmName}
+$spec = New-Object VMware.Vim.ScheduledTaskSpec
+$emailAddr = "me@you.com"
+$spec.Name = "Restart $($vmName)"
+$spec.Description = "Restart $($vmName)"
+$spec.Enabled = $true
+$spec.Scheduler = New-Object VMware.Vim.OnceTaskScheduler
+$spec.Scheduler.runat = $RunTime
+$spec.Action = New-Object VMware.Vim.MethodAction
+$spec.Action.Name = "RebootGuest" 	# Specify Action Here It Is Set To Reboot Guest
+$spec. Notification = $emailAddr
+$scheduledTaskManager.CreateScheduledTask($vm.MoRef, $spec)
