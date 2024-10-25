@@ -1,0 +1,26 @@
+$servers = @("Server Name")
+$localBatchFilePath = "C:\TEMP\Sysinternals\procdump2.bat"  # Path to the batch file on your local machine
+$remoteBatchFilePath = "C:\Windows\System32\procdump2.bat"  # Path where the batch file will be copied to on the remote server
+foreach ($server in $servers) {
+    # Create the destination directory on the remote server if it doesn't exist
+    Invoke-Command -ComputerName $server -ScriptBlock {
+        param ($remoteBatchFilePath)
+        $remoteDir = Split-Path $remoteBatchFilePath
+        if (!(Test-Path $remoteDir)) {
+            New-Item -Path $remoteDir -ItemType Directory -Force
+        }
+    } -ArgumentList $remoteBatchFilePath
+     Copy-Item -Path $localBatchFilePath -Destination \\$server\C$\Windows\System32\procdump2.bat -Force
+}
+$scriptBlock = {
+    param ($batchFilePath)
+    $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At '05:00'
+    $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c $batchFilePath"
+    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -StartWhenAvailable
+    $Principal = New-ScheduledTaskPrincipal -UserID "D2D2AD\SchTasks" -RunLevel Highest -LogonType "ServiceAccount"
+    Register-ScheduledTask -Trigger $trigger -Action $action -Principal $Principal -TaskName "Name Your Task" -Description "Create A Description Of Your Task" -Settings $settings -Force
+}
+foreach ($server in $servers) {
+    Invoke-Command -ComputerName $server -ScriptBlock $scriptBlock -ArgumentList $remoteBatchFilePath
+}
+Start-Sleep 1
